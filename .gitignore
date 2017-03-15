@@ -9,3 +9,7 @@
 .externalNativeBuild
 app/build/
 .idea/
+freeline_core/
+freeline/
+freeline.py
+freeline_project_description.json

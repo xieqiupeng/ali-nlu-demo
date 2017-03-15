@@ -16,137 +16,133 @@ import com.alibaba.idst.nls.internal.protocol.NlsRequestProto;
 
 public class PublicNluActivity extends Activity {
 
-    private boolean isRecognizing = false;
-    private EditText mFullEdit;
-    private EditText mResultEdit;
-    private Button mStartButton;
-    private Button mStopButton;
-    private NlsClient mNlsClient;
-    private NlsRequest mNlsRequest  = initNlsRequest();
+	private boolean isRecognizing = false;
+	private EditText mFullEdit;
+	private EditText mResultEdit;
+	private Button mStartButton;
+	private Button mStopButton;
+	private NlsClient mNlsClient;
+	private NlsRequest mNlsRequest;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_public_nlu);
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_public_nlu);
+		mNlsRequest = initNlsRequest();
+		//
+		mFullEdit = (EditText) findViewById(R.id.editText2_nlu);
+		mResultEdit = (EditText) findViewById(R.id.editText_nlu);
+		mStartButton = (Button) findViewById(R.id.button_nlu);
+		mStopButton = (Button) findViewById(R.id.button2_nlu);
 
-        mFullEdit = (EditText) findViewById(R.id.editText2_nlu);
-        mResultEdit = (EditText) findViewById(R.id.editText_nlu);
-        mStartButton = (Button) findViewById(R.id.button_nlu);
-        mStopButton = (Button) findViewById(R.id.button2_nlu);
+		String appkey = "nls-service-streaming"; //请设置申请到的Appkey
 
-        String appkey = ""; //请设置申请到的Appkey
+		mNlsRequest.setApp_key(appkey);    //appkey请从 "快速开始" 帮助页面的appkey列表中获取
+		mNlsRequest.setAsr_sc("opu");      //设置语音格式
+		mNlsRequest.setDs_type("dialogue"); //初始化NLU请求
 
-        mNlsRequest.setApp_key(appkey);    //appkey请从 "快速开始" 帮助页面的appkey列表中获取
-        mNlsRequest.setAsr_sc("opu");      //设置语音格式
-        mNlsRequest.setDs_type("dialogue"); //初始化NLU请求
-        
+		NlsClient.openLog(true);
+		NlsClient.configure(getApplicationContext()); //全局配置
+		mNlsClient = NlsClient.newInstance(this, mRecognizeListener, mStageListener, mNlsRequest);
+		// 实例化NlsClient
 
+		mNlsClient.setMaxRecordTime(60000);  //设置最长语音
+		mNlsClient.setMaxStallTime(1000);    //设置最短语音
+		mNlsClient.setMinRecordTime(500);    //设置最大录音中断时间
+		mNlsClient.setRecordAutoStop(false);  //设置VAD
+		mNlsClient.setMinVoiceValueInterval(200); //设置音量回调时长
 
-        NlsClient.openLog(true);
-        NlsClient.configure(getApplicationContext()); //全局配置
-        mNlsClient = NlsClient.newInstance(this, mRecognizeListener, mStageListener,mNlsRequest);                          //实例化NlsClient
+		initStartRecognizing();
+		initStopRecognizing();
+	}
 
-        mNlsClient.setMaxRecordTime(60000);  //设置最长语音
-        mNlsClient.setMaxStallTime(1000);    //设置最短语音
-        mNlsClient.setMinRecordTime(500);    //设置最大录音中断时间
-        mNlsClient.setRecordAutoStop(false);  //设置VAD
-        mNlsClient.setMinVoiceValueInterval(200); //设置音量回调时长
+	private NlsRequest initNlsRequest() {
+		NlsRequestProto proto = new NlsRequestProto(this);
+		proto.setApp_user_id("L3Y1Fk8J0R5YzlQY"); //设置用户名
+		return new NlsRequest(proto);
+	}
 
+	private void initStartRecognizing() {
+		mStartButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				isRecognizing = true;
+				mResultEdit.setText("正在录音，请稍候！");
+				//请替换为用户申请到的数加认证key和密钥
+				mNlsRequest.authorize("L3Y1Fk8J0R5YzlQY", "jD6NheENLFrRGrnu3SlDL79O6D6rSA");
+				mNlsClient.start();
+				mStartButton.setText("录音中。。。");
+			}
+		});
+	}
 
-        initStartRecognizing();
-        initStopRecognizing();
-    }
+	private void initStopRecognizing() {
+		mStopButton.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
+				isRecognizing = false;
+				mResultEdit.setText("");
+				mNlsClient.stop();
+				mStartButton.setText("开始 录音");
+			}
+		});
+	}
 
-    private NlsRequest initNlsRequest(){
-        NlsRequestProto proto = new NlsRequestProto(this);
-        proto.setApp_user_id("user_id"); //设置用户名
-        return new NlsRequest(proto);
+	private NlsListener mRecognizeListener = new NlsListener() {
 
-    }
-    
-    private void initStartRecognizing(){
-        mStartButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                isRecognizing = true;
-                mResultEdit.setText("正在录音，请稍候！");
-                mNlsRequest.authorize("", ""); //请替换为用户申请到的数加认证key和密钥
-                mNlsClient.start();
-                mStartButton.setText("录音中。。。");
-            }
-        });
-    }
-
-    private void initStopRecognizing(){
-        mStopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                isRecognizing = false;
-                mResultEdit.setText("");
-                mNlsClient.stop();
-                mStartButton.setText("开始 录音");
-
-            }
-        });
-    }
-
-    private NlsListener mRecognizeListener = new NlsListener() {
-
-        @Override
-        public void onRecognizingResult(int status, RecognizedResult result) {
-            switch (status) {
-                case NlsClient.ErrorCode.SUCCESS:
-                    mResultEdit.setText(result.asr_out);
+		@Override
+		public void onRecognizingResult(int status, RecognizedResult result) {
+			switch (status) {
+				case NlsClient.ErrorCode.SUCCESS:
+					mResultEdit.setText(result.asr_out);
 //                    try {
 //                        String nlu_result = (new JSONObject(result.ds_out)).optString("nlu_result");
 //                        mFullEdit.setText(nlu_result);
 //                    } catch (JSONException e) {
 //                        e.printStackTrace();
 //                    }
-                    mFullEdit.setText(result.ds_out);
+					mFullEdit.setText(result.ds_out);
+					break;
+				case NlsClient.ErrorCode.RECOGNIZE_ERROR:
+					Toast.makeText(PublicNluActivity.this, "recognizer error", Toast.LENGTH_LONG).show();
+					break;
+				case NlsClient.ErrorCode.RECORDING_ERROR:
+					Toast.makeText(PublicNluActivity.this, "recording error", Toast.LENGTH_LONG).show();
+					break;
+				case NlsClient.ErrorCode.NOTHING:
+					Toast.makeText(PublicNluActivity.this, "nothing", Toast.LENGTH_LONG).show();
+					break;
+			}
+			isRecognizing = false;
+		}
 
-                    break;
-                case NlsClient.ErrorCode.RECOGNIZE_ERROR:
-                    Toast.makeText(PublicNluActivity.this, "recognizer error", Toast.LENGTH_LONG).show();
-                    break;
-                case NlsClient.ErrorCode.RECORDING_ERROR:
-                    Toast.makeText(PublicNluActivity.this,"recording error",Toast.LENGTH_LONG).show();
-                    break;
-                case NlsClient.ErrorCode.NOTHING:
-                    Toast.makeText(PublicNluActivity.this,"nothing",Toast.LENGTH_LONG).show();
-                    break;
-            }
-            isRecognizing = false;
-        }
 
+	};
 
-    } ;
+	private StageListener mStageListener = new StageListener() {
+		@Override
+		public void onStartRecognizing(NlsClient recognizer) {
+			super.onStartRecognizing(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
+		}
 
-    private StageListener mStageListener = new StageListener() {
-        @Override
-        public void onStartRecognizing(NlsClient recognizer) {
-            super.onStartRecognizing(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
-        }
+		@Override
+		public void onStopRecognizing(NlsClient recognizer) {
+			super.onStopRecognizing(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
+		}
 
-        @Override
-        public void onStopRecognizing(NlsClient recognizer) {
-            super.onStopRecognizing(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
-        }
+		@Override
+		public void onStartRecording(NlsClient recognizer) {
+			super.onStartRecording(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
+		}
 
-        @Override
-        public void onStartRecording(NlsClient recognizer) {
-            super.onStartRecording(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
-        }
+		@Override
+		public void onStopRecording(NlsClient recognizer) {
+			super.onStopRecording(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
+		}
 
-        @Override
-        public void onStopRecording(NlsClient recognizer) {
-            super.onStopRecording(recognizer);    //To change body of overridden methods use File | Settings | File Templates.
-        }
-
-        @Override
-        public void onVoiceVolume(int volume) {
-            super.onVoiceVolume(volume);
-        }
-
-    };
+		@Override
+		public void onVoiceVolume(int volume) {
+			super.onVoiceVolume(volume);
+		}
+	};
 }
